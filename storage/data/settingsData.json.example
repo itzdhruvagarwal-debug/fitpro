@@ -1,0 +1,52 @@
+{
+    "general": {
+        "locale": "",
+        "gym_logo": [],
+        "currency": "",
+        "gym_name": "",
+        "financial_year_start": "",
+        "financial_year_end": "",
+        "gym_email": "",
+        "gym_contact": "",
+        "address": "",
+        "country": "",
+        "state": "",
+        "city": "",
+        "zip": ""
+    },
+    "invoice": {
+        "prefix": "",
+        "last_number": "",
+        "name_type": ""
+    },
+    "member": {
+        "prefix": "",
+        "last_number": ""
+    },
+    "charges": {
+        "admission_fee": "",
+        "taxes": "",
+        "discounts": []
+    },
+    "expenses": {
+        "categories": []
+    },
+    "subscriptions": {
+        "expiring_days": 7
+    },
+    "gst": {
+        "enabled": false,
+        "gym_gstin": "",
+        "gym_pan": "",
+        "gym_legal_name": "",
+        "gym_address_line1": "",
+        "gym_address_line2": "",
+        "gym_city": "",
+        "gym_state": "",
+        "gym_pincode": "",
+        "gym_state_code": "",
+        "invoice_prefix": "GSA",
+        "invoice_counter": 1,
+        "gst_rate": 18
+    }
+}
