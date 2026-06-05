@@ -6,11 +6,14 @@ use App\Models\Gym;
 use App\Models\Plan;
 use App\Models\Service;
 use App\Models\User;
+use App\Support\Tenancy\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 
 class GymRegistrationController extends Controller
 {
@@ -27,7 +30,7 @@ class GymRegistrationController extends Controller
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')],
             'phone' => ['required', 'string', 'max:20'],
             'city' => ['nullable', 'string', 'max:255'],
-            'password' => ['required', 'string', 'min:8'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
 
         $data['email'] = Str::lower(trim((string) $data['email']));
@@ -56,50 +59,50 @@ class GymRegistrationController extends Controller
                 'database' => 'default',
             ]);
 
-            // Create gym admin user (tenant-scoped by gym_id).
-            User::query()->create([
-                'gym_id' => $gym->id,
-                'name' => $data['owner_name'],
-                'email' => $data['email'],
-                'password' => Hash::make($data['password']),
-                'contact' => $data['phone'],
-                'status' => 'active',
-            ]);
+            TenantContext::run($gym, function () use ($data): void {
+                $owner = User::query()->create([
+                    'name' => $data['owner_name'],
+                    'email' => $data['email'],
+                    'password' => Hash::make($data['password']),
+                    'contact' => $data['phone'],
+                    'status' => 'active',
+                ]);
 
-            // Seed default services + plans for this gym.
-            $service = Service::query()->create([
-                'gym_id' => $gym->id,
-                'name' => 'Gym Membership',
-                'description' => 'Default membership service',
-            ]);
+                $ownerRoleName = (string) config('filament-shield.super_admin.name', 'super_admin');
+                $ownerRole = Role::findOrCreate($ownerRoleName, 'web');
+                $owner->assignRole($ownerRole);
+                app(PermissionRegistrar::class)->forgetCachedPermissions();
 
-            Plan::query()->create([
-                'gym_id' => $gym->id,
-                'service_id' => $service->id,
-                'name' => 'Monthly',
-                'code' => 'MONTHLY',
-                'amount' => 499,
-                'days' => 30,
-                'status' => 'active',
-            ]);
-            Plan::query()->create([
-                'gym_id' => $gym->id,
-                'service_id' => $service->id,
-                'name' => 'Quarterly',
-                'code' => 'QUARTERLY',
-                'amount' => 1299,
-                'days' => 90,
-                'status' => 'active',
-            ]);
-            Plan::query()->create([
-                'gym_id' => $gym->id,
-                'service_id' => $service->id,
-                'name' => 'Yearly',
-                'code' => 'YEARLY',
-                'amount' => 4999,
-                'days' => 365,
-                'status' => 'active',
-            ]);
+                $service = Service::query()->create([
+                    'name' => 'Gym Membership',
+                    'description' => 'Default membership service',
+                ]);
+
+                Plan::query()->create([
+                    'service_id' => $service->id,
+                    'name' => 'Monthly',
+                    'code' => 'MONTHLY',
+                    'amount' => 499,
+                    'days' => 30,
+                    'status' => 'active',
+                ]);
+                Plan::query()->create([
+                    'service_id' => $service->id,
+                    'name' => 'Quarterly',
+                    'code' => 'QUARTERLY',
+                    'amount' => 1299,
+                    'days' => 90,
+                    'status' => 'active',
+                ]);
+                Plan::query()->create([
+                    'service_id' => $service->id,
+                    'name' => 'Yearly',
+                    'code' => 'YEARLY',
+                    'amount' => 4999,
+                    'days' => 365,
+                    'status' => 'active',
+                ]);
+            });
 
             return $gym;
         });

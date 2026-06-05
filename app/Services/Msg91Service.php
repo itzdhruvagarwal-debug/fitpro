@@ -38,7 +38,7 @@ class Msg91Service
         }
 
         if ($this->isQuietHours()) {
-            $this->log($member, 'whatsapp', $templateKey, $phone, 'pending', 'Quiet hours — will retry', null, $variables);
+            $this->log($member, 'whatsapp', $templateKey, $phone, 'pending', 'Quiet hours - will retry', null, $variables);
 
             return false;
         }
@@ -99,7 +99,7 @@ class Msg91Service
         }
 
         if ($this->isQuietHours()) {
-            $this->log($member, 'sms', 'sms', $phone, 'pending', 'Quiet hours — will retry', null, ['message' => $message]);
+            $this->log($member, 'sms', 'sms', $phone, 'pending', 'Quiet hours - will retry', null, ['message' => $message]);
 
             return false;
         }

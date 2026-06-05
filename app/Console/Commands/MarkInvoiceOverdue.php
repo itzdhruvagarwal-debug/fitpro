@@ -2,8 +2,10 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Gym;
 use App\Models\Invoice;
 use App\Support\AppConfig;
+use App\Support\Tenancy\TenantContext;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 
@@ -34,17 +36,48 @@ class MarkInvoiceOverdue extends Command
             return self::SUCCESS;
         }
 
-        $today = Carbon::today(AppConfig::timezone());
+        $totalUpdated = 0;
+        /** @var array<string, int> $summary */
+        $summary = [];
 
-        $updatedCount = Invoice::query()
-            ->whereIn('status', ['issued', 'partial'])
-            ->whereNotNull('due_date')
-            ->whereDate('due_date', '<', $today)
-            ->where('due_amount', '>', 0)
-            ->update(['status' => 'overdue']);
+        foreach (Gym::query()->get() as $gym) {
+            if ($this->shouldSkipTenant($gym)) {
+                continue;
+            }
 
-        $this->info("{$updatedCount} invoice(s) marked as overdue.");
+            $updatedCount = TenantContext::run($gym, function (): int {
+                $today = Carbon::today(AppConfig::timezone());
+
+                return Invoice::query()
+                    ->whereIn('status', ['issued', 'partial'])
+                    ->whereNotNull('due_date')
+                    ->whereDate('due_date', '<', $today)
+                    ->where('due_amount', '>', 0)
+                    ->update(['status' => 'overdue']);
+            });
+
+            if ($updatedCount > 0) {
+                $summary[$gym->name] = $updatedCount;
+                $totalUpdated += $updatedCount;
+            }
+        }
+
+        if ($totalUpdated === 0) {
+            $this->info('No invoices needed overdue updates.');
+
+            return self::SUCCESS;
+        }
+
+        foreach ($summary as $gymName => $updatedCount) {
+            $this->info("{$gymName}: {$updatedCount} invoice(s) marked as overdue.");
+        }
 
         return self::SUCCESS;
+    }
+
+    private function shouldSkipTenant(Gym $gym): bool
+    {
+        return $gym->status === 'suspended'
+            || (! $gym->isOnTrial() && ! $gym->isActive());
     }
 }

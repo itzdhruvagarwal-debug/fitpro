@@ -4,8 +4,8 @@ namespace App\Services\Api\Schemas;
 
 use App\Enums\Status;
 use App\Models\User;
-use App\Rules\ModelExists;
 use App\Rules\ModelUnique;
+use App\Rules\TenantRoleExists;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
@@ -64,7 +64,7 @@ final class UserSchema
             'status' => ['nullable', 'string'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'role_ids' => ['nullable', 'array'],
-            'role_ids.*' => ['integer', new ModelExists(Role::class)],
+            'role_ids.*' => ['integer', new TenantRoleExists],
         ];
     }
 
@@ -88,7 +88,7 @@ final class UserSchema
             'status' => ['sometimes', 'nullable', 'string'],
             'password' => ['sometimes', 'nullable', 'string', 'min:8', 'confirmed'],
             'role_ids' => ['sometimes', 'nullable', 'array'],
-            'role_ids.*' => ['integer', new ModelExists(Role::class)],
+            'role_ids.*' => ['integer', new TenantRoleExists],
         ];
     }
 

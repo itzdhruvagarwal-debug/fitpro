@@ -7,6 +7,7 @@ use App\Http\Requests\Api\V1\UserUpdateRequest;
 use App\Http\Resources\V1\UserResource;
 use App\Models\User;
 use App\Services\Api\QueryFilters;
+use App\Support\Tenancy\TenantRoleQuery;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -53,7 +54,7 @@ class UsersController extends ApiController
         $user = User::create($data);
 
         if (is_array($roleIds) && $roleIds !== []) {
-            $roles = Role::query()->whereIn('id', $roleIds)->get();
+            $roles = TenantRoleQuery::apply(Role::query())->whereIn('id', $roleIds)->get();
             $user->syncRoles($roles);
         }
 
@@ -96,7 +97,7 @@ class UsersController extends ApiController
         $user->update($data);
 
         if (is_array($roleIds)) {
-            $roles = Role::query()->whereIn('id', $roleIds)->get();
+            $roles = TenantRoleQuery::apply(Role::query())->whereIn('id', $roleIds)->get();
             $user->syncRoles($roles);
         }
 

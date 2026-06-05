@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Resources\V1\RoleResource;
+use App\Support\Tenancy\TenantRoleQuery;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Spatie\Permission\Models\Role;
@@ -19,9 +20,9 @@ class RolesController extends ApiController
     {
         $this->requirePermission($request, 'ViewAny:Role');
 
-        $roles = Role::query()
-            ->with('permissions')
+        $roles = TenantRoleQuery::apply(Role::query())
             ->orderBy('name')
+            ->with('permissions')
             ->get();
 
         return RoleResource::collection($roles);

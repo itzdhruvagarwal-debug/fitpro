@@ -16,17 +16,13 @@ trait HasGym
             }
         });
 
-        static::creating(function ($model): void {
+        static::saving(function ($model): void {
             if (! app()->bound('currentTenant') || ! app('currentTenant')) {
                 return;
             }
 
             $currentGymId = app('currentTenant')->id;
-
-            // Only set if missing.
-            if (blank($model->getAttribute('gym_id'))) {
-                $model->setAttribute('gym_id', $currentGymId);
-            }
+            $model->setAttribute('gym_id', $currentGymId);
         });
     }
 

@@ -3,9 +3,11 @@
 namespace App\Console\Commands;
 
 use App\Helpers\Helpers;
+use App\Models\Gym;
 use App\Models\Subscription;
 use App\Models\User;
 use App\Support\AppConfig;
+use App\Support\Tenancy\TenantContext;
 use Carbon\Carbon;
 use Filament\Notifications\Notification;
 use Illuminate\Console\Command;
@@ -38,11 +40,73 @@ class MarkSubscriptionsStatus extends Command
         $expiringDays = Helpers::getSubscriptionExpiringDays();
         $expiringThreshold = $today->copy()->addDays($expiringDays);
 
-        $summary = [];
-
         $runExpiredOnly = (bool) $this->option('mark-expired');
         $runExpiringOnly = (bool) $this->option('mark-expiring');
         $runAll = ! $runExpiredOnly && ! $runExpiringOnly;
+        $roleName = (string) config('filament-shield.super_admin.name', 'super_admin');
+
+        /** @var array<string, list<string>> $summary */
+        $summary = [];
+
+        foreach (Gym::query()->get() as $gym) {
+            if ($this->shouldSkipTenant($gym)) {
+                continue;
+            }
+
+            $tenantSummary = TenantContext::run(
+                $gym,
+                fn (): array => $this->updateTenantSubscriptions(
+                    today: $today,
+                    expiringThreshold: $expiringThreshold,
+                    expiringDays: $expiringDays,
+                    runAll: $runAll,
+                    runExpiredOnly: $runExpiredOnly,
+                    runExpiringOnly: $runExpiringOnly,
+                ),
+            );
+
+            if (empty($tenantSummary)) {
+                continue;
+            }
+
+            $summary[$gym->name] = $tenantSummary;
+
+            TenantContext::run($gym, function () use ($tenantSummary, $roleName): void {
+                User::role($roleName)->get()->each(function (User $admin) use ($tenantSummary): void {
+                    Notification::make()
+                        ->title(__('app.notifications.subscription_status_update_title'))
+                        ->body(__('app.notifications.subscription_status_update_body', ['summary' => implode(', ', $tenantSummary)]))
+                        ->info()
+                        ->sendToDatabase($admin);
+                });
+            });
+        }
+
+        if (empty($summary)) {
+            $this->info('No subscription statuses needed updating.');
+
+            return self::SUCCESS;
+        }
+
+        foreach ($summary as $gymName => $tenantSummary) {
+            $this->info($gymName.': '.implode(', ', $tenantSummary));
+        }
+
+        return self::SUCCESS;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function updateTenantSubscriptions(
+        Carbon $today,
+        Carbon $expiringThreshold,
+        int $expiringDays,
+        bool $runAll,
+        bool $runExpiredOnly,
+        bool $runExpiringOnly,
+    ): array {
+        $summary = [];
 
         if ($runAll || $runExpiredOnly) {
             $expiredCount = Subscription::query()
@@ -90,7 +154,7 @@ class MarkSubscriptionsStatus extends Command
                 ->update(['status' => 'expiring']);
 
             if ($expiringCount > 0) {
-                $summary[] = "{$expiringCount} expiring (≤ {$expiringDays} days)";
+                $summary[] = "{$expiringCount} expiring (<= {$expiringDays} days)";
             }
         }
 
@@ -106,25 +170,12 @@ class MarkSubscriptionsStatus extends Command
             }
         }
 
-        if (empty($summary)) {
-            $this->info('No subscription statuses needed updating.');
+        return $summary;
+    }
 
-            return self::SUCCESS;
-        }
-
-        foreach ($summary as $line) {
-            $this->info("• {$line}");
-        }
-
-        $admin = User::role('super_admin')->first();
-        if ($admin) {
-            Notification::make()
-                ->title(__('app.notifications.subscription_status_update_title'))
-                ->body(__('app.notifications.subscription_status_update_body', ['summary' => implode(', ', $summary)]))
-                ->info()
-                ->sendToDatabase($admin);
-        }
-
-        return self::SUCCESS;
+    private function shouldSkipTenant(Gym $gym): bool
+    {
+        return $gym->status === 'suspended'
+            || (! $gym->isOnTrial() && ! $gym->isActive());
     }
 }

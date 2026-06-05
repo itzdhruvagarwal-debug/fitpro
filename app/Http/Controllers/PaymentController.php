@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Member;
 use App\Models\PaymentTransaction;
 use App\Models\Plan;
+use App\Rules\ModelExists;
 use App\Services\RazorpayService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -20,7 +21,7 @@ class PaymentController extends Controller
         $this->authorize('update', $member);
 
         $data = $request->validate([
-            'plan_id' => ['required', 'integer', 'exists:plans,id'],
+            'plan_id' => ['required', 'integer', new ModelExists(Plan::class)],
         ]);
 
         $plan = Plan::query()->findOrFail((int) $data['plan_id']);

@@ -77,6 +77,6 @@ class MarkSubscriptionsStatusCommandTest extends TestCase
         $this->assertNotNull($notification);
         $this->assertStringContainsString(__('app.notifications.subscription_status_update_title'), (string) ($notification->data['title'] ?? ''));
         $this->assertStringContainsString('1 expired', (string) ($notification->data['body'] ?? ''));
-        $this->assertStringContainsString('1 expiring (≤ 7 days)', (string) ($notification->data['body'] ?? ''));
+        $this->assertStringContainsString('1 expiring (<= 7 days)', (string) ($notification->data['body'] ?? ''));
     }
 }

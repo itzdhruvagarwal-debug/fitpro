@@ -5,8 +5,10 @@ namespace App\Console\Commands;
 use App\Helpers\Helpers;
 use App\Jobs\SendExpiryWarningNotification;
 use App\Jobs\SendRenewalReminderNotification;
+use App\Models\Gym;
 use App\Models\Subscription;
 use App\Support\AppConfig;
+use App\Support\Tenancy\TenantContext;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -44,6 +46,41 @@ class SendRenewalReminders extends Command
 
         $timezone = AppConfig::timezone();
         $today = Carbon::today($timezone);
+        $summary = [
+            'renewal_reminders' => 0,
+            'expiry_warnings' => 0,
+        ];
+
+        foreach (Gym::query()->get() as $gym) {
+            if ($this->shouldSkipTenant($gym)) {
+                continue;
+            }
+
+            $tenantSummary = TenantContext::run(
+                $gym,
+                fn (): array => $this->dispatchTenantReminders($normalizedDays, $today),
+            );
+
+            $summary['renewal_reminders'] += $tenantSummary['renewal_reminders'];
+            $summary['expiry_warnings'] += $tenantSummary['expiry_warnings'];
+        }
+
+        Log::info('Renewal reminders dispatched.', [
+            'days' => $normalizedDays,
+            'summary' => $summary,
+        ]);
+
+        $this->info('Dispatched: '.$summary['renewal_reminders'].' renewal reminder(s), '.$summary['expiry_warnings'].' expiry warning(s).');
+
+        return self::SUCCESS;
+    }
+
+    /**
+     * @param  list<int>  $normalizedDays
+     * @return array{renewal_reminders: int, expiry_warnings: int}
+     */
+    private function dispatchTenantReminders(array $normalizedDays, Carbon $today): array
+    {
         $summary = [
             'renewal_reminders' => 0,
             'expiry_warnings' => 0,
@@ -93,13 +130,12 @@ class SendRenewalReminders extends Command
             $summary['expiry_warnings']++;
         }
 
-        Log::info('Renewal reminders dispatched.', [
-            'days' => $normalizedDays,
-            'summary' => $summary,
-        ]);
+        return $summary;
+    }
 
-        $this->info('Dispatched: '.$summary['renewal_reminders'].' renewal reminder(s), '.$summary['expiry_warnings'].' expiry warning(s).');
-
-        return self::SUCCESS;
+    private function shouldSkipTenant(Gym $gym): bool
+    {
+        return $gym->status === 'suspended'
+            || (! $gym->isOnTrial() && ! $gym->isActive());
     }
 }
