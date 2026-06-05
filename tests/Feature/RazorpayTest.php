@@ -20,7 +20,8 @@ it('rejects webhook processing when signature verification fails', function (): 
         'payload' => [],
     ]);
 
-    $response->assertOk()->assertJson(['ok' => true]);
+    $response->assertUnauthorized()->assertJson(['message' => 'Invalid webhook signature.']);
+    $this->assertDatabaseCount('razorpay_webhook_events', 0);
 });
 
 it('processes payment captured webhook and extends member subscription', function (): void {

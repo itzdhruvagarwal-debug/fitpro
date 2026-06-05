@@ -192,6 +192,10 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('api-login', function (Request $request): Limit {
             return Limit::perMinute(10)->by((string) $request->ip());
         });
+
+        RateLimiter::for('razorpay-webhook', function (Request $request): Limit {
+            return Limit::perMinute(120)->by((string) $request->ip());
+        });
     }
 
     /**

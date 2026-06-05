@@ -47,4 +47,5 @@ Route::middleware(['auth', 'tenant.active', 'permissions.team', 'tenant.user'])
     });
 
 Route::post('/razorpay/webhook', [RazorpayWebhookController::class, 'handle'])
+    ->middleware('throttle:razorpay-webhook')
     ->name('razorpay.webhook');

@@ -10,10 +10,6 @@ class GymSubdomainFinder extends TenantFinder
 {
     public function findForRequest(Request $request): ?Gym
     {
-        if (app()->runningUnitTests() && app()->bound('currentTenant') && app('currentTenant') instanceof Gym) {
-            return app('currentTenant');
-        }
-
         $host = (string) $request->getHost();
         $baseDomain = (string) config('app.base_domain', 'gymsaathi.in');
 

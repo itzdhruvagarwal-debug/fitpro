@@ -24,7 +24,7 @@ class RazorpayWebhookController extends Controller
         if (! $this->razorpayService->verifyWebhookSignature($body, $signature)) {
             Log::warning('Razorpay webhook signature verification failed.');
 
-            return response()->json(['ok' => true], 200);
+            return response()->json(['message' => 'Invalid webhook signature.'], 401);
         }
 
         $payload = $request->json()->all();
@@ -35,7 +35,7 @@ class RazorpayWebhookController extends Controller
             ? (int) app('currentTenant')->id
             : null;
 
-        $inserted = DB::table('razorpay_webhook_events')->insertOrIgnore([
+        DB::table('razorpay_webhook_events')->insertOrIgnore([
             'gym_id' => $gymId,
             'event_name' => $event !== '' ? $event : 'unknown',
             'razorpay_event_id' => data_get($payload, 'payload.payment.entity.id')
@@ -49,7 +49,19 @@ class RazorpayWebhookController extends Controller
             'updated_at' => now(),
         ]);
 
-        if ($inserted === 0) {
+        $webhookEvent = DB::table('razorpay_webhook_events')
+            ->where('payload_hash', $payloadHash)
+            ->first(['id', 'processed_at']);
+
+        if (! $webhookEvent) {
+            Log::error('Razorpay webhook event could not be recorded.', [
+                'event' => $event,
+            ]);
+
+            return response()->json(['message' => 'Webhook could not be recorded.'], 500);
+        }
+
+        if ($webhookEvent->processed_at !== null) {
             return response()->json(['ok' => true, 'duplicate' => true], 200);
         }
 
@@ -64,13 +76,17 @@ class RazorpayWebhookController extends Controller
                 default => null,
             };
         } catch (\Throwable $exception) {
-            Log::warning('Razorpay webhook event processing failed.', [
+            Log::error('Razorpay webhook event processing failed.', [
                 'event' => $event,
+                'exception' => $exception->getMessage(),
             ]);
+
+            return response()->json(['message' => 'Webhook processing failed.'], 500);
         }
 
         DB::table('razorpay_webhook_events')
-            ->where('payload_hash', $payloadHash)
+            ->where('id', $webhookEvent->id)
+            ->whereNull('processed_at')
             ->update([
                 'processed_at' => now(),
                 'updated_at' => now(),

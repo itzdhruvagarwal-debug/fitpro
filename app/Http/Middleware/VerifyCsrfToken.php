@@ -10,6 +10,7 @@ class VerifyCsrfToken extends Middleware
      * @var array<int, string>
      */
     protected $except = [
+        // Razorpay cannot send Laravel CSRF tokens; the controller requires X-Razorpay-Signature.
         'razorpay/webhook',
     ];
 }
