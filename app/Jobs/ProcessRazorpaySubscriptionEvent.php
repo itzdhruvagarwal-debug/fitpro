@@ -2,16 +2,18 @@
 
 namespace App\Jobs;
 
+use App\Jobs\Concerns\LogsJobFailures;
 use App\Models\Member;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Spatie\Multitenancy\Jobs\TenantAware;
 
-class ProcessRazorpaySubscriptionEvent implements ShouldQueue
+class ProcessRazorpaySubscriptionEvent implements ShouldQueue, TenantAware
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable, InteractsWithQueue, LogsJobFailures, Queueable, SerializesModels;
 
     /**
      * @param  array<string, mixed>  $payload

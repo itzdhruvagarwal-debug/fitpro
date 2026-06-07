@@ -37,7 +37,7 @@ class InvoiceTransactionsController extends ApiController
     /**
      * Create a payment/refund transaction for an invoice.
      */
-    public function store(InvoiceTransactionStoreRequest $request, Invoice $invoice): InvoiceTransactionResource
+    public function store(InvoiceTransactionStoreRequest $request, Invoice $invoice): InvoiceTransactionResource|JsonResponse
     {
         $this->requirePermission($request, 'Update:Invoice');
 

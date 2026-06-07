@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Member;
 use App\Models\PaymentTransaction;
 use App\Models\Plan;
+use Illuminate\Support\Facades\DB;
 use Razorpay\Api\Api;
 use Throwable;
 
@@ -49,23 +50,10 @@ class RazorpayService
     public function createSubscription(Member $member, Plan $plan): array
     {
         $customerId = $this->getOrCreateCustomer($member);
-        $period = $plan->days && (int) $plan->days > 60 ? 'yearly' : 'monthly';
-
-        $rzpPlan = $this->api->plan->create([
-            'period' => $period,
-            'interval' => 1,
-            'item' => [
-                'name' => $plan->name.' - '.config('app.name'),
-                'amount' => (int) round(((float) $plan->amount) * 100),
-                'currency' => 'INR',
-            ],
-            'notes' => [
-                'local_plan_id' => (string) $plan->id,
-            ],
-        ]);
+        $razorpayPlanId = $this->razorpayPlanIdFor($plan);
 
         $subscription = $this->api->subscription->create([
-            'plan_id' => $rzpPlan->id,
+            'plan_id' => $razorpayPlanId,
             'customer_id' => $customerId,
             'total_count' => 120,
             'quantity' => 1,
@@ -88,6 +76,42 @@ class RazorpayService
             'razorpay_key' => (string) config('razorpay.key_id'),
             'customer_id' => $customerId,
         ];
+    }
+
+    private function razorpayPlanIdFor(Plan $plan): string
+    {
+        return DB::transaction(function () use ($plan): string {
+            /** @var Plan $lockedPlan */
+            $lockedPlan = Plan::query()
+                ->whereKey($plan->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if (filled($lockedPlan->razorpay_plan_id)) {
+                return (string) $lockedPlan->razorpay_plan_id;
+            }
+
+            $period = $lockedPlan->days && (int) $lockedPlan->days > 60 ? 'yearly' : 'monthly';
+
+            $rzpPlan = $this->api->plan->create([
+                'period' => $period,
+                'interval' => 1,
+                'item' => [
+                    'name' => $lockedPlan->name.' - '.config('app.name'),
+                    'amount' => (int) round(((float) $lockedPlan->amount) * 100),
+                    'currency' => 'INR',
+                ],
+                'notes' => [
+                    'local_plan_id' => (string) $lockedPlan->id,
+                ],
+            ]);
+
+            $lockedPlan->forceFill([
+                'razorpay_plan_id' => (string) $rzpPlan->id,
+            ])->save();
+
+            return (string) $rzpPlan->id;
+        });
     }
 
     /**

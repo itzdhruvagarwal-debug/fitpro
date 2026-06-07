@@ -20,6 +20,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string|null $description
  * @property int|null $service_id
  * @property float|int|string|null $amount
+ * @property string|null $razorpay_plan_id
  * @property int|float|string|null $days
  * @property Status|null $status
  * @property-read Service|null $service
@@ -44,6 +45,7 @@ class Plan extends Model
         'description',
         'service_id',
         'amount',
+        'razorpay_plan_id',
         'days',
         'status',
     ];

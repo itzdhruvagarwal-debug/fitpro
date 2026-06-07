@@ -7,19 +7,20 @@ use App\Contracts\SettingsRepository;
 /**
  * JSON-backed settings repository (OSS default).
  *
- * Settings are stored under `storage/data/settingsData.json`.
+ * Settings are stored per tenant under `storage/data/gym_{id}_settings.json`.
+ * Non-tenant contexts use `storage/data/settingsData.json`.
  * Other installations can override this binding to store settings elsewhere.
  */
 class JsonSettingsRepository implements SettingsRepository
 {
-    private const SETTINGS_PATH = 'data/settingsData.json';
+    private const GLOBAL_SETTINGS_PATH = 'data/settingsData.json';
 
     private const EXAMPLE_SETTINGS_PATH = 'data/settingsData.json.example';
 
     /**
-     * @var array<string, mixed>|null
+     * @var array<string, array<string, mixed>>
      */
-    private ?array $cachedSettings = null;
+    private array $cachedSettings = [];
 
     /**
      * @var array<string, mixed>|null
@@ -27,38 +28,49 @@ class JsonSettingsRepository implements SettingsRepository
     protected static ?array $testOverride = null;
 
     /**
+     * @var array<string, array<string, mixed>>
+     */
+    protected static array $testSettings = [];
+
+    /**
      * @param  array<string, mixed>|null  $override
      */
     public function setTestOverride(?array $override): void
     {
         static::$testOverride = $override;
-        $this->cachedSettings = null;
+        $this->cachedSettings = [];
     }
 
     public function get(): array
     {
-        if ($this->cachedSettings !== null) {
-            return $this->cachedSettings;
+        if (static::$testOverride !== null) {
+            return $this->normalize(static::$testOverride);
         }
 
-        if (static::$testOverride !== null) {
-            return $this->cachedSettings = $this->normalize(static::$testOverride);
+        $cacheKey = $this->settingsPath();
+
+        if (isset($this->cachedSettings[$cacheKey])) {
+            return $this->cachedSettings[$cacheKey];
         }
 
         if (app()->runningUnitTests()) {
+            if (isset(static::$testSettings[$cacheKey])) {
+                return $this->cachedSettings[$cacheKey] = $this->normalize(static::$testSettings[$cacheKey]);
+            }
+
             $exampleFilePath = storage_path(self::EXAMPLE_SETTINGS_PATH);
 
             if (file_exists($exampleFilePath)) {
                 $settings = json_decode((string) file_get_contents($exampleFilePath), true) ?? [];
                 $settings = is_array($settings) ? $settings : [];
 
-                return $this->cachedSettings = $this->normalize($settings);
+                return $this->cachedSettings[$cacheKey] = $this->normalize($settings);
             }
 
-            return $this->cachedSettings = $this->normalize([]);
+            return $this->cachedSettings[$cacheKey] = $this->normalize([]);
         }
 
-        $filePath = storage_path(self::SETTINGS_PATH);
+        $filePath = storage_path($cacheKey);
 
         if (! file_exists($filePath)) {
             $this->initializeFile($filePath);
@@ -67,21 +79,22 @@ class JsonSettingsRepository implements SettingsRepository
         $settings = json_decode((string) file_get_contents($filePath), true) ?? [];
         $settings = is_array($settings) ? $settings : [];
 
-        return $this->cachedSettings = $this->normalize($settings);
+        return $this->cachedSettings[$cacheKey] = $this->normalize($settings);
     }
 
     public function put(array $settings): void
     {
         $normalized = $this->normalize($settings);
+        $cacheKey = $this->settingsPath();
 
         if (app()->runningUnitTests()) {
-            static::$testOverride = $normalized;
-            $this->cachedSettings = $normalized;
+            static::$testSettings[$cacheKey] = $normalized;
+            $this->cachedSettings[$cacheKey] = $normalized;
 
             return;
         }
 
-        $filePath = storage_path(self::SETTINGS_PATH);
+        $filePath = storage_path($cacheKey);
 
         if (! file_exists(dirname($filePath))) {
             mkdir(dirname($filePath), 0755, true);
@@ -90,9 +103,66 @@ class JsonSettingsRepository implements SettingsRepository
         file_put_contents(
             $filePath,
             json_encode($normalized, JSON_PRETTY_PRINT),
+            LOCK_EX,
         );
 
-        $this->cachedSettings = $normalized;
+        $this->cachedSettings[$cacheKey] = $normalized;
+    }
+
+    /**
+     * Atomically read, mutate, and write settings for the active tenant.
+     *
+     * @param  callable(array<string, mixed>): array<string, mixed>  $mutator
+     * @return array<string, mixed>
+     */
+    public function updateWithLock(callable $mutator): array
+    {
+        $cacheKey = $this->settingsPath();
+
+        if (app()->runningUnitTests()) {
+            $current = static::$testSettings[$cacheKey] ?? $this->get();
+            $updated = $this->normalize($mutator($this->normalize($current)));
+            static::$testSettings[$cacheKey] = $updated;
+            $this->cachedSettings[$cacheKey] = $updated;
+
+            return $updated;
+        }
+
+        $filePath = storage_path($cacheKey);
+
+        if (! file_exists($filePath)) {
+            $this->initializeFile($filePath);
+        }
+
+        $handle = fopen($filePath, 'c+');
+        if ($handle === false) {
+            $updated = $this->normalize($mutator($this->get()));
+            $this->put($updated);
+
+            return $updated;
+        }
+
+        try {
+            flock($handle, LOCK_EX);
+            rewind($handle);
+            $contents = stream_get_contents($handle);
+            $settings = json_decode(is_string($contents) ? $contents : '', true) ?? [];
+            $settings = is_array($settings) ? $settings : [];
+
+            $updated = $this->normalize($mutator($this->normalize($settings)));
+
+            rewind($handle);
+            ftruncate($handle, 0);
+            fwrite($handle, json_encode($updated, JSON_PRETTY_PRINT) ?: '{}');
+            fflush($handle);
+
+            $this->cachedSettings[$cacheKey] = $updated;
+
+            return $updated;
+        } finally {
+            flock($handle, LOCK_UN);
+            fclose($handle);
+        }
     }
 
     private function initializeFile(string $filePath): void
@@ -116,7 +186,9 @@ class JsonSettingsRepository implements SettingsRepository
             'charges' => [],
             'expenses' => [],
             'subscriptions' => [],
-        ], JSON_PRETTY_PRINT));
+            'payments' => [],
+            'notifications' => [],
+        ], JSON_PRETTY_PRINT), LOCK_EX);
     }
 
     /**
@@ -228,10 +300,23 @@ class JsonSettingsRepository implements SettingsRepository
             ! is_string($payments['provider']) ||
             trim($payments['provider']) === ''
         ) {
-            $payments['provider'] = 'stripe';
+            $payments['provider'] = 'razorpay';
         }
         $settings['payments'] = $payments;
 
         return $settings;
+    }
+
+    private function settingsPath(): string
+    {
+        $tenantId = app()->bound('currentTenant') && app('currentTenant')
+            ? (int) app('currentTenant')->id
+            : null;
+
+        if ($tenantId === null || $tenantId <= 0) {
+            return self::GLOBAL_SETTINGS_PATH;
+        }
+
+        return "data/gym_{$tenantId}_settings.json";
     }
 }

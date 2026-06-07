@@ -7,6 +7,7 @@ use App\Models\PaymentTransaction;
 use App\Models\Plan;
 use App\Rules\ModelExists;
 use App\Services\RazorpayService;
+use App\Support\Data;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -77,31 +78,31 @@ class PaymentController extends Controller
             return response()->json(['success' => false, 'message' => 'Invalid payment signature'], 422);
         }
 
-        $result = DB::transaction(function () use ($data): array {
+        $tenantId = app()->bound('currentTenant') && app('currentTenant')
+            ? Data::int(app('currentTenant')->id)
+            : null;
+
+        $transaction = $this->findPaymentTransaction($data, $tenantId);
+        if (! $transaction) {
+            return response()->json(['success' => false, 'message' => 'Transaction not found'], 404);
+        }
+
+        $member = $transaction->member()->first();
+        if (! $member) {
+            return response()->json(['success' => false, 'message' => 'Member not found'], 404);
+        }
+
+        $this->authorize('update', $member);
+
+        $result = DB::transaction(function () use ($data, $transaction, $member): array {
             $transaction = PaymentTransaction::query()
-                ->where('razorpay_payment_id', $data['razorpay_payment_id'])
+                ->whereKey($transaction->getKey())
                 ->lockForUpdate()
-                ->latest('id')
                 ->first();
 
-            if (! $transaction && filled($data['razorpay_order_id'] ?? null)) {
-                $transaction = PaymentTransaction::query()
-                    ->where('razorpay_order_id', $data['razorpay_order_id'])
-                    ->lockForUpdate()
-                    ->latest('id')
-                    ->first();
-            }
-
-            if (! $transaction) {
+            if (! $transaction || (int) $transaction->member_id !== (int) $member->id) {
                 return ['code' => 404, 'payload' => ['success' => false, 'message' => 'Transaction not found']];
             }
-
-            $member = $transaction->member()->first();
-            if (! $member) {
-                return ['code' => 404, 'payload' => ['success' => false, 'message' => 'Member not found']];
-            }
-
-            $this->authorize('update', $member);
 
             if (
                 filled($transaction->razorpay_payment_id)
@@ -127,6 +128,34 @@ class PaymentController extends Controller
         });
 
         return response()->json($result['payload'], $result['code']);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function findPaymentTransaction(array $data, ?int $tenantId): ?PaymentTransaction
+    {
+        $query = PaymentTransaction::query()
+            ->where('razorpay_payment_id', $data['razorpay_payment_id']);
+
+        if ($tenantId !== null) {
+            $query->where('gym_id', $tenantId);
+        }
+
+        $transaction = $query->latest('id')->first();
+
+        if ($transaction || blank($data['razorpay_order_id'] ?? null)) {
+            return $transaction;
+        }
+
+        $query = PaymentTransaction::query()
+            ->where('razorpay_order_id', $data['razorpay_order_id']);
+
+        if ($tenantId !== null) {
+            $query->where('gym_id', $tenantId);
+        }
+
+        return $query->latest('id')->first();
     }
 
     public function cancelSubscription(Member $member): JsonResponse

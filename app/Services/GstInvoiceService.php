@@ -6,6 +6,7 @@ use App\Contracts\SettingsRepository;
 use App\Helpers\NumberToWords;
 use App\Models\Invoice;
 use App\Models\Member;
+use App\Services\JsonSettingsRepository;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
@@ -92,22 +93,37 @@ class GstInvoiceService
 
     public function generateInvoiceNumber(): string
     {
-        $settings = $this->settings();
-        $gst = data_get($settings, 'gst', []);
-        $prefix = strtoupper((string) ($gst['invoice_prefix'] ?? 'GSA'));
-        $counter = (int) ($gst['invoice_counter'] ?? 1);
-        $year = Carbon::now()->year;
-        $serial = str_pad((string) $counter, 5, '0', STR_PAD_LEFT);
+        $repository = app(SettingsRepository::class);
+        $invoiceNumber = null;
 
-        app(SettingsRepository::class)->put(array_replace_recursive($settings, [
-            'gst' => [
+        $mutator = function (array $settings) use (&$invoiceNumber): array {
+            $gst = data_get($settings, 'gst', []);
+            $gst = is_array($gst) ? $gst : [];
+            $prefix = strtoupper((string) ($gst['invoice_prefix'] ?? 'GSA'));
+            $counter = max((int) ($gst['invoice_counter'] ?? 1), 1);
+            $year = Carbon::now()->year;
+            $serial = str_pad((string) $counter, 5, '0', STR_PAD_LEFT);
+            $invoiceNumber = "{$prefix}-{$year}-{$serial}";
+
+            $settings['gst'] = [
                 ...$gst,
                 'invoice_counter' => $counter + 1,
                 'invoice_prefix' => $prefix,
-            ],
-        ]));
+            ];
 
-        return "{$prefix}-{$year}-{$serial}";
+            return $settings;
+        };
+
+        if ($repository instanceof JsonSettingsRepository) {
+            $repository->updateWithLock($mutator);
+
+            return (string) $invoiceNumber;
+        }
+
+        $settings = $repository->get();
+        $repository->put($mutator($settings));
+
+        return (string) $invoiceNumber;
     }
 
     public function generateInvoicePdf(Invoice $invoice): string
@@ -180,7 +196,7 @@ class GstInvoiceService
             'discount_note' => $description !== '' ? $description : null,
         ]);
 
-        dispatch(fn () => $this->generateInvoicePdf($invoice));
+        dispatch(fn () => $this->generateInvoicePdf($invoice))->afterCommit();
 
         return $invoice;
     }

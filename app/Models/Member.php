@@ -129,6 +129,7 @@ class Member extends Model
         }
 
         $latestSubscription = $this->subscriptions()
+            ->lockForUpdate()
             ->latest('end_date')
             ->first();
 

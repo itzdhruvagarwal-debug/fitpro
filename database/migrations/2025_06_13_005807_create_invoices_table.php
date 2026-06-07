@@ -15,7 +15,6 @@ return new class extends Migration
             $table->id();
             $table->string('number')->unique();
             $table->foreignId('subscription_id')->constrained()->onDelete('cascade');
-            $table->unique('subscription_id');
             $table->date('date');
             $table->date('due_date')->nullable();
             $table->string('payment_method')->nullable();
