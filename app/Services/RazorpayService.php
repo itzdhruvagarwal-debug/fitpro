@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Gym;
 use App\Models\Member;
 use App\Models\PaymentTransaction;
 use App\Models\Plan;
@@ -177,5 +178,95 @@ class RazorpayService
         $this->api->subscription->fetch($subscriptionId)->cancel([
             'cancel_at_cycle_end' => $cancelAtCycleEnd ? 1 : 0,
         ]);
+    }
+
+    /**
+     * Get or create a Razorpay Customer for a Gym.
+     */
+    public function getOrCreateGymCustomer(Gym $gym): string
+    {
+        $settings = $gym->settings ?? [];
+        if (isset($settings['razorpay_customer_id']) && $settings['razorpay_customer_id']) {
+            return (string) $settings['razorpay_customer_id'];
+        }
+
+        $customer = $this->api->customer->create([
+            'name' => $gym->owner_name ?: $gym->name,
+            'email' => $gym->owner_email ?: "billing-{$gym->slug}@gymsaathi.in",
+            'contact' => $gym->owner_phone ?: '',
+            'notes' => ['gym_id' => (string) $gym->id],
+        ]);
+
+        $settings['razorpay_customer_id'] = $customer->id;
+        $gym->update(['settings' => $settings]);
+
+        return (string) $customer->id;
+    }
+
+    /**
+     * Get or create a Razorpay Plan for Gym subscriptions.
+     */
+    public function getOrCreateGymRazorpayPlan(string $planName): string
+    {
+        $amounts = [
+            'starter' => 999.00,
+            'growth' => 1999.00,
+            'pro' => 3999.00,
+        ];
+
+        $amount = $amounts[$planName] ?? 999.00;
+
+        return (string) \Illuminate\Support\Facades\Cache::rememberForever("razorpay_gym_plan_id_{$planName}", function () use ($planName, $amount) {
+            $rzpPlan = $this->api->plan->create([
+                'period' => 'monthly',
+                'interval' => 1,
+                'item' => [
+                    'name' => ucfirst($planName).' Plan - GymSaathi Subscription',
+                    'amount' => (int) round($amount * 100),
+                    'currency' => 'INR',
+                ],
+                'notes' => [
+                    'gym_plan_type' => $planName,
+                ],
+            ]);
+
+            return (string) $rzpPlan->id;
+        });
+    }
+
+    /**
+     * Create a Razorpay Subscription for a Gym.
+     *
+     * @return array{
+     *  subscription_id:string,
+     *  short_url:string|null,
+     *  razorpay_key:string,
+     *  customer_id:string
+     * }
+     */
+    public function createGymSubscription(Gym $gym, string $planName): array
+    {
+        $customerId = $this->getOrCreateGymCustomer($gym);
+        $planId = $this->getOrCreateGymRazorpayPlan($planName);
+
+        $subscription = $this->api->subscription->create([
+            'plan_id' => $planId,
+            'customer_id' => $customerId,
+            'total_count' => 120, // 10 years
+            'quantity' => 1,
+            'customer_notify' => 1,
+            'notes' => [
+                'gym_id' => (string) $gym->id,
+                'is_gym_subscription' => '1',
+                'plan_name' => $planName,
+            ],
+        ]);
+
+        return [
+            'subscription_id' => $subscription->id,
+            'short_url' => $subscription->short_url ?? null,
+            'razorpay_key' => (string) config('razorpay.key_id'),
+            'customer_id' => $customerId,
+        ];
     }
 }

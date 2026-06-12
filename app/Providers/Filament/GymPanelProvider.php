@@ -5,6 +5,7 @@ namespace App\Providers\Filament;
 use App\Filament\Pages\Dashboard;
 use App\Filament\Pages\GstSettings;
 use App\Filament\Pages\Settings;
+use App\Filament\Pages\SubscriptionBilling;
 use App\Filament\Resources\Enquiries\EnquiryResource;
 use App\Filament\Resources\Expenses\ExpenseResource;
 use App\Filament\Resources\FollowUps\FollowUpResource;
@@ -66,6 +67,7 @@ class GymPanelProvider extends PanelProvider
                 Dashboard::class,
                 Settings::class,
                 GstSettings::class,
+                SubscriptionBilling::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->plugins([
@@ -135,6 +137,7 @@ class GymPanelProvider extends PanelProvider
         $administration = [
             ...Settings::getNavigationItems(),
             ...GstSettings::getNavigationItems(),
+            ...SubscriptionBilling::getNavigationItems(),
             ...UserResource::getNavigationItems(),
             ...RoleResource::getNavigationItems(),
         ];

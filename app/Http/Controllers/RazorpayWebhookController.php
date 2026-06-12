@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Jobs\HandleFailedPayment;
+use App\Jobs\ProcessGymSubscriptionWebhook;
 use App\Jobs\ProcessRazorpayPayment;
 use App\Jobs\ProcessRazorpaySubscriptionEvent;
 use App\Services\RazorpayService;
@@ -63,6 +64,32 @@ class RazorpayWebhookController extends Controller
 
         if ($webhookEvent->processed_at !== null) {
             return response()->json(['ok' => true, 'duplicate' => true], 200);
+        }
+
+        $isGymSubscription = (bool) (data_get($payment, 'notes.is_gym_subscription')
+            ?: data_get($subscription, 'notes.is_gym_subscription'));
+
+        if ($isGymSubscription) {
+            try {
+                ProcessGymSubscriptionWebhook::dispatch($event, $payload);
+            } catch (\Throwable $exception) {
+                Log::error('Razorpay gym webhook event processing failed.', [
+                    'event' => $event,
+                    'exception' => $exception->getMessage(),
+                ]);
+
+                return response()->json(['message' => 'Webhook processing failed.'], 500);
+            }
+
+            DB::table('razorpay_webhook_events')
+                ->where('id', $webhookEvent->id)
+                ->whereNull('processed_at')
+                ->update([
+                    'processed_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+            return response()->json(['ok' => true], 200);
         }
 
         try {
