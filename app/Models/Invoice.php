@@ -199,9 +199,10 @@ class Invoice extends Model
 
         static::saving(function (self $invoice): void {
             if (! $invoice->number) {
-                $invoice->number = Helpers::generateLastNumber('invoice', Invoice::class, $invoice->date);
+                $invoice->number = app(\App\Contracts\SequenceRepository::class)->next('invoice', self::class, $invoice->date);
+            } else {
+                Helpers::updateLastNumber('invoice', $invoice->number, $invoice->date);
             }
-            Helpers::updateLastNumber('invoice', $invoice->number, $invoice->date);
 
             $taxRate = Helpers::getTaxRate() ?: 0;
             $summary = InvoiceCalculator::summary(
@@ -247,7 +248,9 @@ class Invoice extends Model
         });
 
         static::updated(function (self $invoice): void {
-            $invoice->syncFromTransactions();
+            if ($invoice->wasChanged(['paid_amount', 'total_amount', 'status'])) {
+                $invoice->syncFromTransactions();
+            }
         });
     }
 }

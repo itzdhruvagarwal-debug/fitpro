@@ -28,4 +28,16 @@ interface SequenceRepository
         string $newNumber,
         ?string $date = null,
     ): void;
+
+    /**
+     * Generate and persist the next sequence number atomically.
+     *
+     * @param  class-string  $modelClass
+     */
+    public function next(
+        string $type,
+        string $modelClass,
+        ?string $dateString = null,
+        ?string $modelColumn = 'number',
+    ): string;
 }

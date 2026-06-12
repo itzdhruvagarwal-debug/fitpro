@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\Member;
 use App\Models\PaymentTransaction;
+use App\Jobs\Concerns\LogsJobFailures;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -14,7 +15,7 @@ use Spatie\Multitenancy\Jobs\TenantAware;
 
 class HandleFailedPayment implements ShouldQueue, TenantAware
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable, InteractsWithQueue, LogsJobFailures, Queueable, SerializesModels;
 
     /**
      * @param  array<string, mixed>  $payload

@@ -126,4 +126,79 @@ class JsonSequenceRepository implements SequenceRepository
 
         $this->settingsRepository->put($settings);
     }
+
+    public function next(
+        string $type,
+        string $modelClass,
+        ?string $dateString = null,
+        ?string $modelColumn = 'number',
+    ): string {
+        $date = Helpers::parseDate($dateString);
+        [$start, $end] = Helpers::getFiscalSpan($date);
+
+        $nextNumber = null;
+
+        $mutator = function (array $settings) use ($type, $modelClass, $modelColumn, $start, $end, &$nextNumber): array {
+            /** @var Model $model */
+            $model = new $modelClass;
+            $table = $model->getTable();
+
+            $dateColumn = Schema::hasColumn($table, 'date')
+                ? 'date'
+                : 'created_at';
+
+            $rawPrefix = data_get($settings, "{$type}.prefix", '');
+            $rawSaved = data_get($settings, "{$type}.last_number", '');
+
+            $prefix = trim(Data::string($rawPrefix), '-');
+            $prefix = filled($prefix) ? $prefix : 'GY';
+            $separator = $prefix !== '' ? '-' : '';
+            $match = $prefix.$separator;
+
+            $lastFromDb = $modelClass::query()
+                ->whereBetween($dateColumn, [$start->toDateString(), $end->toDateString()])
+                ->pluck($modelColumn ?? 'number')
+                ->map(
+                    fn ($raw) => Str::of(Data::string($raw))
+                        ->whenStartsWith($match, fn ($s) => $s->after($match))
+                        ->__toString()
+                )
+                ->map(fn ($v) => is_numeric($v) ? (int) $v : 0)
+                ->max() ?: 0;
+
+            $lastFromSettings = Str::of(Data::string($rawSaved))
+                ->whenStartsWith($match, fn ($s) => $s->after($match))
+                ->__toString();
+            $lastFromSettings = is_numeric($lastFromSettings)
+                ? (int) $lastFromSettings
+                : 0;
+
+            $next = max($lastFromDb, $lastFromSettings) + 1;
+
+            $nextNumber = str($prefix)
+                ->when($separator !== '', fn ($s) => $s->append($separator))
+                ->append((string) $next)
+                ->__toString();
+
+            if (! isset($settings[$type]) || ! is_array($settings[$type])) {
+                $settings[$type] = [];
+            }
+
+            $typeSettings = $settings[$type];
+            $typeSettings['last_number'] = $next;
+            $typeSettings['prefix'] = $prefix;
+            $settings[$type] = $typeSettings;
+
+            return $settings;
+        };
+
+        if ($this->settingsRepository instanceof JsonSettingsRepository) {
+            $this->settingsRepository->updateWithLock($mutator);
+        } else {
+            $settings = $this->settingsRepository->get();
+            $this->settingsRepository->put($mutator($settings));
+        }
+
+        return (string) $nextNumber;
+    }
 }

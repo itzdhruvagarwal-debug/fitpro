@@ -10,6 +10,7 @@ use App\Services\Api\QueryFilters;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Members CRUD endpoints.
@@ -72,6 +73,9 @@ class MembersController extends ApiController
         $data = $request->validated();
 
         if ($request->hasFile('photo')) {
+            if ($member->photo) {
+                Storage::disk('public')->delete($member->photo);
+            }
             $data['photo'] = $request->file('photo')->storePublicly('images', 'public');
         }
 

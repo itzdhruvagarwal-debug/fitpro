@@ -48,7 +48,7 @@ class MarkSubscriptionsStatus extends Command
         /** @var array<string, list<string>> $summary */
         $summary = [];
 
-        foreach (Gym::query()->get() as $gym) {
+        foreach (Gym::query()->cursor() as $gym) {
             if ($this->shouldSkipTenant($gym)) {
                 continue;
             }

@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Services\Email\InvoiceEmailService;
 use App\Support\Invoices\InvoiceDocumentNotRenderable;
+use App\Jobs\Concerns\LogsJobFailures;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -18,7 +19,7 @@ use Spatie\Multitenancy\Jobs\TenantAware;
  */
 class SendInvoiceIssuedEmail implements ShouldBeUnique, ShouldQueue, TenantAware
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable, InteractsWithQueue, LogsJobFailures, Queueable, SerializesModels;
 
     /**
      * Number of times the job may be attempted.

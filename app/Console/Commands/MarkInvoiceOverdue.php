@@ -40,7 +40,7 @@ class MarkInvoiceOverdue extends Command
         /** @var array<string, int> $summary */
         $summary = [];
 
-        foreach (Gym::query()->get() as $gym) {
+        foreach (Gym::query()->cursor() as $gym) {
             if ($this->shouldSkipTenant($gym)) {
                 continue;
             }

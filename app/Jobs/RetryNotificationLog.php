@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\NotificationLog;
+use App\Jobs\Concerns\LogsJobFailures;
 use App\Services\Msg91Service;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -14,7 +15,7 @@ use Spatie\Multitenancy\Jobs\TenantAware;
 
 class RetryNotificationLog implements ShouldBeUnique, ShouldQueue, TenantAware
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable, InteractsWithQueue, LogsJobFailures, Queueable, SerializesModels;
 
     public int $tries = 3;
 

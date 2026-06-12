@@ -29,13 +29,13 @@ trait CascadesSoftDeletes
     {
         static::deleting(function (Model $model): void {
             foreach (static::relationsToCascade() as $relation) {
-                $model->{$relation}()->get()->each->delete();
+                $model->{$relation}()->update(['deleted_at' => now()]);
             }
         });
 
         static::restoring(function (Model $model): void {
             foreach (static::relationsToCascade() as $relation) {
-                $model->{$relation}()->withTrashed()->get()->each->restore();
+                $model->{$relation}()->withTrashed()->update(['deleted_at' => null]);
             }
         });
     }

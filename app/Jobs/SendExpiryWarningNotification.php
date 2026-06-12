@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Helpers\Helpers;
 use App\Models\Member;
+use App\Jobs\Concerns\LogsJobFailures;
 use App\Services\Msg91Service;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -15,7 +16,7 @@ use Spatie\Multitenancy\Jobs\TenantAware;
 
 class SendExpiryWarningNotification implements ShouldBeUnique, ShouldQueue, TenantAware
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable, InteractsWithQueue, LogsJobFailures, Queueable, SerializesModels;
 
     public int $tries = 3;
 

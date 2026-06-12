@@ -51,7 +51,7 @@ class SendRenewalReminders extends Command
             'expiry_warnings' => 0,
         ];
 
-        foreach (Gym::query()->get() as $gym) {
+        foreach (Gym::query()->cursor() as $gym) {
             if ($this->shouldSkipTenant($gym)) {
                 continue;
             }

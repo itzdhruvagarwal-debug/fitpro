@@ -78,21 +78,26 @@ class ProcessRazorpayPayment implements ShouldQueue, TenantAware
 
             $latestPlanName = (string) ($member->subscriptions()->latest('end_date')->with('plan')->first()?->plan?->name ?? 'Membership');
 
-            app(GstInvoiceService::class)->createGstInvoice(
-                $member,
-                $amount,
-                'Membership renewal - '.$latestPlanName
-            );
-
             $member->extendMembership($this->resolveExtensionDays($member));
 
             return [
                 'member_id' => (int) $member->getKey(),
                 'transaction_id' => (int) $transaction->getKey(),
+                'amount' => $amount,
+                'latest_plan_name' => $latestPlanName,
             ];
         });
 
         if ($dispatchPayload !== null) {
+            $member = Member::query()->find($dispatchPayload['member_id']);
+            if ($member) {
+                app(GstInvoiceService::class)->createGstInvoice(
+                    $member,
+                    $dispatchPayload['amount'],
+                    'Membership renewal - '.$dispatchPayload['latest_plan_name']
+                );
+            }
+
             SendPaymentConfirmationNotification::dispatch(
                 memberId: $dispatchPayload['member_id'],
                 transactionId: $dispatchPayload['transaction_id'],

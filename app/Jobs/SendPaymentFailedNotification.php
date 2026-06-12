@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Helpers\Helpers;
 use App\Models\Member;
 use App\Services\Msg91Service;
+use App\Jobs\Concerns\LogsJobFailures;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -15,7 +16,7 @@ use Spatie\Multitenancy\Jobs\TenantAware;
 
 class SendPaymentFailedNotification implements ShouldBeUnique, ShouldQueue, TenantAware
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable, InteractsWithQueue, LogsJobFailures, Queueable, SerializesModels;
 
     public int $tries = 3;
 

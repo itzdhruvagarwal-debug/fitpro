@@ -5,6 +5,7 @@ namespace App\Providers\Filament;
 use App\Http\Middleware\EnsureSuperAdminDomain;
 use App\Http\Middleware\SetAppLocale;
 use App\Http\Middleware\VerifyCsrfToken;
+use App\Http\Middleware\SuperAdminTwoFactorMiddleware;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -38,6 +39,10 @@ class SuperAdminPanelProvider extends PanelProvider
                 'warning' => Color::Orange,
             ])
             ->discoverResources(in: app_path('Filament/SuperAdmin/Resources'), for: 'App\\Filament\\SuperAdmin\\Resources')
+            ->discoverPages(in: app_path('Filament/SuperAdmin/Pages'), for: 'App\\Filament\\SuperAdmin\\Pages')
+            ->pages([
+                \Filament\Pages\Dashboard::class,
+            ])
             ->middleware([
                 SetAppLocale::class,
                 EncryptCookies::class,
@@ -50,6 +55,7 @@ class SuperAdminPanelProvider extends PanelProvider
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
                 EnsureSuperAdminDomain::class,
+                SuperAdminTwoFactorMiddleware::class,
             ])
             ->authMiddleware([
                 Authenticate::class,

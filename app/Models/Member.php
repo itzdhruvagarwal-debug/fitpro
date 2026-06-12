@@ -158,9 +158,10 @@ class Member extends Model
 
         static::saving(function (self $member): void {
             if (! $member->code) {
-                $member->code = Helpers::generateLastNumber('member', Member::class, null, 'code');
+                $member->code = app(\App\Contracts\SequenceRepository::class)->next('member', self::class, null, 'code');
+            } else {
+                Helpers::updateLastNumber('member', $member->code);
             }
-            Helpers::updateLastNumber('member', $member->code);
         });
     }
 

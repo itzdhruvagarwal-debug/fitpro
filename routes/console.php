@@ -10,12 +10,18 @@ Artisan::command('inspire', function () {
 
 // Mark subscriptions expired every day at 00:00
 Schedule::command('gymie:subscriptions')
-    ->dailyAt('00:00');
+    ->dailyAt('00:00')
+    ->withoutOverlapping()
+    ->onOneServer();
 
 // Mark invoices overdue every day at 00:00
 Schedule::command('gymie:invoices --mark-overdue')
-    ->dailyAt('00:00');
+    ->dailyAt('00:00')
+    ->withoutOverlapping()
+    ->onOneServer();
 
 // Send renewal reminders every day at 09:00
 Schedule::command('notifications:send-renewal-reminders')
-    ->dailyAt('09:00');
+    ->dailyAt('09:00')
+    ->withoutOverlapping()
+    ->onOneServer();
