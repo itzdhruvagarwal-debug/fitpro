@@ -8,4 +8,5 @@ return [
     AppServiceProvider::class,
     GymPanelProvider::class,
     SuperAdminPanelProvider::class,
+    App\Providers\HorizonServiceProvider::class,
 ];

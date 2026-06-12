@@ -160,6 +160,49 @@ class AuthController extends ApiController
     }
 
     /**
+     * Refresh the authenticated Sanctum token (token rotation).
+     */
+    public function refresh(Request $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+        $this->ensureTenantUserAccess($user);
+        $tenant = app()->bound('currentTenant') ? app('currentTenant') : null;
+
+        $tokenInstance = $user->currentAccessToken();
+        if (! $tokenInstance) {
+            return response()->json(['message' => 'Token not found.'], 401);
+        }
+
+        $deviceName = $tokenInstance->name ?: 'api';
+
+        // Revoke current token
+        $tokenInstance->delete();
+
+        // Issue new token with fresh 30-day expiry
+        $tokenExpiry = now()->addDays(30);
+        $token = $user->createToken($deviceName, ['*'], $tokenExpiry)->plainTextToken;
+
+        $this->writeSecurityAuditLog(
+            eventType: 'auth.token_refresh',
+            outcome: 'success',
+            request: $request,
+            gymId: $tenant instanceof Gym ? (int) $tenant->id : null,
+            userId: (int) $user->id,
+            email: (string) $user->email,
+            context: ['device_name' => $deviceName],
+        );
+
+        $user->load('roles');
+
+        return response()->json([
+            'token' => $token,
+            'token_type' => 'Bearer',
+            'user' => new UserResource($user),
+        ]);
+    }
+
+    /**
      * @param  array<string, mixed>|null  $context
      */
     private function writeSecurityAuditLog(

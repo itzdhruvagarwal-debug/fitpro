@@ -218,6 +218,30 @@ final class QueryFilters
             return $query;
         }
 
+        // Optimize search on members table using MySQL FULLTEXT MATCH...AGAINST
+        if ($query->getModel()->getTable() === 'members') {
+            $words = array_filter(preg_split('/\s+/', $q));
+            // Check if we have search terms and the total query length is >= 3 characters
+            if (! empty($words) && mb_strlen($q) >= 3) {
+                $searchTerms = '';
+                foreach ($words as $word) {
+                    // Strip boolean search operators to prevent syntax errors
+                    $sanitized = preg_replace('/[+\-><()~*\"@]/', '', $word);
+                    if ($sanitized !== '') {
+                        $searchTerms .= '+'.$sanitized.'* ';
+                    }
+                }
+                $searchTerms = trim($searchTerms);
+
+                if ($searchTerms !== '') {
+                    return $query->whereRaw(
+                        'MATCH(name, email, contact, code) AGAINST(? IN BOOLEAN MODE)',
+                        [$searchTerms]
+                    );
+                }
+            }
+        }
+
         return $query->where(function (Builder $sub) use ($q, $columns): void {
             $firstColumn = array_shift($columns);
             if ($firstColumn !== null) {

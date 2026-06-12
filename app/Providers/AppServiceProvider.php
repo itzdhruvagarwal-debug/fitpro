@@ -31,8 +31,11 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
@@ -141,6 +144,7 @@ class AppServiceProvider extends ServiceProvider
 
         $this->configureDeletionPrevention();
         $this->registerModelObservers();
+        $this->configureQueueFailingAlerts();
     }
 
     /**
@@ -287,5 +291,22 @@ class AppServiceProvider extends ServiceProvider
                     return $action;
                 });
         }, isImportant: true);
+    }
+
+    /**
+     * Register Queue failing event alerts.
+     */
+    private function configureQueueFailingAlerts(): void
+    {
+        Queue::failing(static function (JobFailed $event): void {
+            Log::critical("Queue job failed: {$event->job->resolveName()}", [
+                'connection' => $event->connectionName,
+                'queue' => $event->job->getQueue(),
+                'exception' => $event->exception->getMessage(),
+                'file' => $event->exception->getFile(),
+                'line' => $event->exception->getLine(),
+                'payload' => $event->job->getRawBody(),
+            ]);
+        });
     }
 }

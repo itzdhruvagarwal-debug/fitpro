@@ -16,10 +16,12 @@
         "lab404/laravel-impersonate": "^1.7.8",
         "flowframe/laravel-trend": "^0.4.0",
         "laravel/framework": "^12.0",
+        "laravel/horizon": "^5.29",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.10.1",
         "nnjeim/world": "^1.1",
         "razorpay/razorpay": "^2.9",
+        "spatie/laravel-backup": "^9.0",
         "spatie/laravel-multitenancy": "^4.0.4",
         "spatie/laravel-query-builder": "^6.4"
     },

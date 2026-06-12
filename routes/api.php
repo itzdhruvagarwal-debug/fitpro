@@ -30,6 +30,7 @@ Route::prefix('v1')
             ->group(function (): void {
                 Route::get('/me', [AuthController::class, 'me']);
                 Route::post('/auth/logout', [AuthController::class, 'logout']);
+                Route::post('/auth/refresh', [AuthController::class, 'refresh']);
 
                 Route::get('/settings', [SettingsController::class, 'show']);
                 Route::put('/settings', [SettingsController::class, 'update']);
