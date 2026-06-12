@@ -22,12 +22,6 @@
                             <p class="text-sm text-gray-400">Your account is secured with two-factor authentication.</p>
                         </div>
                     </div>
-
-                    <div class="mt-6 flex justify-end">
-                        <x-filament::button wire:click="disable" color="danger">
-                            Disable 2FA
-                        </x-filament::button>
-                    </div>
                 @else
                     <div class="flex items-center gap-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-amber-400">
                         <div class="flex h-10 w-10 items-center justify-center rounded-full bg-amber-500/20">

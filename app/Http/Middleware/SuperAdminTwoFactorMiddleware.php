@@ -19,17 +19,24 @@ class SuperAdminTwoFactorMiddleware
         if ($guard->check()) {
             $user = $guard->user();
 
-            if (! empty($user->two_factor_secret)) {
-                // If not verified yet, redirect to 2FA challenge page
-                if (! session()->get('super_admin_2fa_verified')) {
-                    // Let them access the challenge page or log out
-                    if ($request->routeIs('filament.superadmin.pages.two-factor-challenge') ||
-                        $request->routeIs('filament.superadmin.auth.logout')) {
-                        return $next($request);
-                    }
-
-                    return redirect()->route('filament.superadmin.pages.two-factor-challenge');
+            // 1. If 2FA is not set up, they MUST set it up on the TwoFactorSettings page.
+            if (empty($user->two_factor_secret)) {
+                if ($request->routeIs('filament.superadmin.pages.two-factor-settings') ||
+                    $request->routeIs('filament.superadmin.auth.logout')) {
+                    return $next($request);
                 }
+
+                return redirect()->route('filament.superadmin.pages.two-factor-settings');
+            }
+
+            // 2. If 2FA is set up but not verified in the session, they MUST verify it on the challenge page.
+            if (! session()->get('super_admin_2fa_verified')) {
+                if ($request->routeIs('filament.superadmin.pages.two-factor-challenge') ||
+                    $request->routeIs('filament.superadmin.auth.logout')) {
+                    return $next($request);
+                }
+
+                return redirect()->route('filament.superadmin.pages.two-factor-challenge');
             }
         }
 

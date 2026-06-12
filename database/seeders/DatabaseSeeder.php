@@ -14,11 +14,13 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             SeedAction::class,
-            GymSeeder::class,
         ]);
 
         if (app()->environment(['local', 'development'])) {
-            $this->call(DashboardDemoSeeder::class);
+            $this->call([
+                GymSeeder::class,
+                DashboardDemoSeeder::class,
+            ]);
         }
     }
 }

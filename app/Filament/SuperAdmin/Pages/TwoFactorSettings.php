@@ -65,25 +65,6 @@ class TwoFactorSettings extends Page
 
     public function disable(): void
     {
-        $user = Auth::guard('super_admin')->user();
-        $user->update([
-            'two_factor_secret' => null,
-        ]);
-
-        $this->isEnabled = false;
-        session()->forget('super_admin_2fa_verified');
-
-        $google2fa = new Google2FA();
-        $this->secretKey = $google2fa->generateSecretKey();
-        $this->qrCodeUri = $google2fa->getQRCodeInline(
-            config('app.name', 'GymSaathi'),
-            $user->email,
-            $this->secretKey
-        );
-
-        Notification::make()
-            ->title('Two-Factor Authentication Disabled')
-            ->warning()
-            ->send();
+        abort(403, 'Two-factor authentication is mandatory and cannot be disabled.');
     }
 }

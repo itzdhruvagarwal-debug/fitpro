@@ -22,9 +22,16 @@ class Msg91Service
         $this->authKey = (string) config('msg91.auth_key', '');
     }
 
-    public function sendWhatsApp(Member $member, string $templateKey, array $variables = []): bool
+    public function sendWhatsApp(string|Member $to, string $templateKey, array $variables = []): bool
     {
-        $phone = $this->normalizePhone($member->notification_phone ?? $member->contact);
+        $member = null;
+        if ($to instanceof Member) {
+            $member = $to;
+            $phone = $this->normalizePhone($member->notification_phone ?? $member->contact);
+        } else {
+            $phone = $this->normalizePhone($to);
+        }
+
         $templateId = (string) config("msg91.templates.{$templateKey}", '');
         $settings = Helpers::getSettings();
         $integratedNumber = (string) data_get($settings, 'notifications.whatsapp.integrated_number', (string) config('msg91.whatsapp_number', ''));
