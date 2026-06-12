@@ -9,9 +9,9 @@ use Filament\Pages\Page;
 
 class SubscriptionBilling extends Page
 {
-    protected static ?string $navigationIcon = 'heroicon-o-credit-card';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-credit-card';
 
-    protected static string $view = 'filament.pages.subscription-billing';
+    protected string $view = 'filament.pages.subscription-billing';
 
     public ?Gym $gym = null;
 

@@ -198,6 +198,29 @@ class Settings extends Page implements HasForms
                             ]),
                     ])
                     ->columnSpan(3),
+                Section::make('Check-In & Location Settings')
+                    ->aside()
+                    ->schema([
+                        Grid::make(3)
+                            ->schema([
+                                TextInput::make('general.latitude')
+                                    ->label('Gym Latitude')
+                                    ->numeric()
+                                    ->step('any')
+                                    ->placeholder('e.g. 28.6139'),
+                                TextInput::make('general.longitude')
+                                    ->label('Gym Longitude')
+                                    ->numeric()
+                                    ->step('any')
+                                    ->placeholder('e.g. 77.2090'),
+                                TextInput::make('general.checkin_radius')
+                                    ->label('Check-In Radius (meters)')
+                                    ->numeric()
+                                    ->default(100)
+                                    ->placeholder('e.g. 100'),
+                            ]),
+                    ])
+                    ->columnSpan(3),
             ]);
     }
 

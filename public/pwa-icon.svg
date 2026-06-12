@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <linearGradient id="roseGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fda4af" />
+      <stop offset="50%" stop-color="#f43f5e" />
+      <stop offset="100%" stop-color="#be123c" />
+    </linearGradient>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#18181b" />
+      <stop offset="100%" stop-color="#09090b" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="15" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="128" fill="url(#bgGradient)" />
+  <g filter="url(#glow)">
+    <rect x="120" y="236" width="272" height="40" rx="10" fill="url(#roseGradient)" />
+    <rect x="180" y="156" width="30" height="200" rx="15" fill="url(#roseGradient)" />
+    <rect x="140" y="116" width="30" height="280" rx="15" fill="url(#roseGradient)" fill-opacity="0.9" />
+    <rect x="100" y="76" width="30" height="360" rx="15" fill="url(#roseGradient)" fill-opacity="0.8" />
+    <rect x="302" y="156" width="30" height="200" rx="15" fill="url(#roseGradient)" />
+    <rect x="342" y="116" width="30" height="280" rx="15" fill="url(#roseGradient)" fill-opacity="0.9" />
+    <rect x="382" y="76" width="30" height="360" rx="15" fill="url(#roseGradient)" fill-opacity="0.8" />
+  </g>
+  <circle cx="256" cy="256" r="230" fill="none" stroke="url(#roseGradient)" stroke-width="8" stroke-dasharray="15 10" opacity="0.3" />
+</svg>

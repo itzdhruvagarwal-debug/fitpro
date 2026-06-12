@@ -9,9 +9,9 @@ use Filament\Notifications\Notification;
 
 class TwoFactorSettings extends Page
 {
-    protected static ?string $navigationIcon = 'heroicon-o-shield-check';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-shield-check';
 
-    protected static string $view = 'filament.superadmin.pages.two-factor-settings';
+    protected string $view = 'filament.superadmin.pages.two-factor-settings';
 
     protected static ?string $title = 'Two-Factor Authentication';
 

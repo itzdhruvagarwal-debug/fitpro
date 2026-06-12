@@ -10,7 +10,7 @@ class TwoFactorChallenge extends Page
 {
     protected static bool $shouldRegisterNavigation = false;
 
-    protected static string $view = 'filament.superadmin.pages.two-factor-challenge';
+    protected string $view = 'filament.superadmin.pages.two-factor-challenge';
 
     protected static string $layout = 'filament-panels::components.layout.base';
 

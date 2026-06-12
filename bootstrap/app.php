@@ -40,6 +40,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'superadmin.domain' => EnsureSuperAdminDomain::class,
             'permissions.team' => SetPermissionsTeamFromTenant::class,
             'tenant.user' => EnsureTenantUserAccess::class,
+            'auth.member' => \App\Http\Middleware\AuthenticateMember::class,
+            'guest.member' => \App\Http\Middleware\RedirectIfMember::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

@@ -49,3 +49,28 @@ Route::middleware(['auth', 'tenant.active', 'permissions.team', 'tenant.user'])
 Route::post('/razorpay/webhook', [RazorpayWebhookController::class, 'handle'])
     ->middleware('throttle:razorpay-webhook')
     ->name('razorpay.webhook');
+
+// Member Routes
+Route::prefix('member')->name('member.')->middleware(['tenant.active'])->group(function (): void {
+    Route::middleware(['guest.member'])->group(function (): void {
+        Route::get('/login', [\App\Http\Controllers\Member\MemberAuthController::class, 'showLogin'])->name('login');
+        Route::post('/login', [\App\Http\Controllers\Member\MemberAuthController::class, 'login'])->name('login.post');
+    });
+
+    Route::middleware(['auth.member'])->group(function (): void {
+        Route::get('/dashboard', [\App\Http\Controllers\Member\MemberDashboardController::class, 'index'])->name('dashboard');
+        Route::post('/logout', [\App\Http\Controllers\Member\MemberAuthController::class, 'logout'])->name('logout');
+        
+        // Attendance
+        Route::post('/check-in', [\App\Http\Controllers\Member\MemberDashboardController::class, 'checkIn'])->name('checkin');
+
+        // Payments
+        Route::post('/payment/subscribe', [\App\Http\Controllers\Member\MemberDashboardController::class, 'initiateSubscription'])->name('payment.subscribe');
+        Route::post('/payment/order', [\App\Http\Controllers\Member\MemberDashboardController::class, 'initiateOrder'])->name('payment.order');
+        Route::post('/payment/verify', [\App\Http\Controllers\Member\MemberDashboardController::class, 'verifyPayment'])->name('payment.verify');
+
+        // Invoices
+        Route::get('/invoice/{invoice}/download', [\App\Http\Controllers\Member\MemberDashboardController::class, 'downloadInvoice'])->name('invoice.download');
+    });
+});
+

@@ -11,7 +11,7 @@ use Carbon\Carbon;
 use Database\Factories\MemberFactory;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -35,9 +35,10 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string|null $source
  * @property string|null $goal
  * @property Status|null $status
+ * @property string|null $password
  * @property-read Collection<int, Subscription> $subscriptions
  */
-class Member extends Model
+class Member extends Authenticatable
 {
     /** @use HasFactory<MemberFactory> */
     use CascadesSoftDeletes, HasFactory, SoftDeletes;
@@ -76,6 +77,12 @@ class Member extends Model
         'razorpay_subscription_id',
         'upi_autopay_active',
         'upi_mandate_status',
+        'password',
+    ];
+
+    protected $hidden = [
+        'password',
+        'remember_token',
     ];
 
     protected $casts = [
@@ -84,6 +91,7 @@ class Member extends Model
         'upi_autopay_active' => 'boolean',
         'whatsapp_enabled' => 'boolean',
         'sms_enabled' => 'boolean',
+        'password' => 'hashed',
     ];
 
     /**
@@ -114,6 +122,14 @@ class Member extends Model
     public function paymentTransactions(): HasMany
     {
         return $this->hasMany(PaymentTransaction::class);
+    }
+
+    /**
+     * @return HasMany<MemberAttendance, $this>
+     */
+    public function attendances(): HasMany
+    {
+        return $this->hasMany(MemberAttendance::class);
     }
 
     public function isAutoPayActive(): bool
@@ -155,6 +171,12 @@ class Member extends Model
     protected static function boot(): void
     {
         parent::boot();
+
+        static::creating(function (self $member): void {
+            if (! $member->password) {
+                $member->password = \Illuminate\Support\Facades\Hash::make($member->contact ?? '12345678');
+            }
+        });
 
         static::saving(function (self $member): void {
             if (! $member->code) {

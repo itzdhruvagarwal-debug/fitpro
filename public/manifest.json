@@ -1,0 +1,24 @@
+{
+  "name": "FitPro Member Dashboard",
+  "short_name": "FitPro",
+  "description": "Progressive Web App for Gym Members to track plans, attendances and pay.",
+  "start_url": "/member/dashboard",
+  "display": "standalone",
+  "background_color": "#09090b",
+  "theme_color": "#f43f5e",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/pwa-icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "512x512",
+      "purpose": "maskable"
+    }
+  ]
+}
